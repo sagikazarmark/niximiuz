@@ -1,0 +1,130 @@
+# niximiuz example: build & publish workflow.
+#
+# Recipes assume `labctl`, `docker` (with buildx), `yq`, and `just` are on
+# PATH. `nix develop` from this directory provides everything except
+# docker, which is expected on the host.
+
+set shell := ["bash", "-euo", "pipefail", "-c"]
+
+[private]
+default:
+    @just --list
+
+# List every flake output (content derivations + bake files + devshell).
+list:
+    @nix flake show --allow-import-from-derivation
+
+# Build a content derivation and print its store path.
+#   kind    : playground | tutorial | challenge | training | course
+#   name    : entry name (directory under <kind>s/, e.g. hello)
+#   channel : live | dev (default: dev)
+build kind name channel="dev":
+    @nix build --print-out-paths --no-link ".#{{ kind }}-{{ name }}-{{ channel }}"
+
+# Build the bake-file derivation for a playground image.
+build-bake name channel="dev":
+    @nix build --print-out-paths --no-link ".#bake-{{ name }}-{{ channel }}"
+
+# Push a content manifest to the platform via labctl.
+#
+# Playgrounds get their slug from content/manifest.yaml's `name` field.
+# Every other kind stores the slug in $out/.content-name (injected by the
+# content builders as a root-level file).
+push-content kind name channel="dev":
+    #!/usr/bin/env bash
+    out=$(nix build --print-out-paths --no-link ".#{{ kind }}-{{ name }}-{{ channel }}")
+    if [[ "{{ kind }}" == "playground" ]]; then
+      slug=$(yq -r .name "$out/content/manifest.yaml")
+      labctl playground update --dir "$out/content" --force "$slug"
+    else
+      slug=$(cat "$out/.content-name")
+      labctl content push --dir "$out/content" --force "{{ kind }}" "$slug"
+    fi
+
+# Push a playground image via `docker buildx bake`. Only playgrounds
+# register bake modules, tutorials/challenges skip this.
+push-image name channel="dev":
+    #!/usr/bin/env bash
+    bake=$(just build-bake {{ name }} {{ channel }})
+    docker buildx bake -f "$bake" --push
+
+# Push everything for a content entry. For playgrounds: image then
+# manifest (manifest references the image, so order matters). For
+# non-playgrounds: manifest only.
+push kind name channel="dev":
+    #!/usr/bin/env bash
+    if [[ "{{ kind }}" == "playground" ]]; then
+      just push-image {{ name }} {{ channel }}
+    fi
+    just push-content {{ kind }} {{ name }} {{ channel }}
+
+# Open a live session against the platform. Playground sessions open
+# standalone; tutorial/challenge sessions open inside their reader pane.
+start kind name channel="dev":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    out=$(nix build --print-out-paths --no-link ".#{{ kind }}-{{ name }}-{{ channel }}")
+    if [[ "{{ kind }}" == "playground" ]]; then
+      slug=$(yq -r .name "$out/content/manifest.yaml")
+    else
+      slug=$(cat "$out/.content-name")
+    fi
+    labctl {{ kind }} start --open "$slug"
+
+# Run the solver against an already-running session. Useful during
+# solver iteration, leaves the session running so you can inspect
+# state or re-run. Playgrounds don't have solvers; use `just test`.
+solve kind name channel="dev":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    solver={{ kind }}s/{{ name }}/solution/run.sh
+    test -x "$solver" || { echo "no solver: $solver" >&2; exit 1; }
+    out=$(nix build --print-out-paths --no-link ".#{{ kind }}-{{ name }}-{{ channel }}")
+    slug=$(cat "$out/.content-name")
+    playId=$(labctl playground list -q --filter {{ kind }}="$slug" | head -1)
+    test -n "$playId" || { echo "no running session for $slug; 'just start {{ kind }} {{ name }} {{ channel }}' first" >&2; exit 1; }
+    "$solver" "$playId"
+
+# Run integration tests against the live platform via labctl.
+#
+# Assumes the content has already been pushed (`just push ...`) and that
+# the caller is authenticated (`labctl auth login ...`).
+#
+#   kind    : playground | tutorial | challenge
+#   name    : entry dir name
+#   channel : live | dev (default: dev)
+#   tier    : premium | free (default: premium)
+#
+# Playgrounds: runs <kind>s/<name>/tests.sh over `labctl ssh`.
+# Tutorials/challenges: runs <kind>s/<name>/solution/run.sh against the
+# started session, then waits for the manifest's tasks to pass.
+test kind name channel="dev" tier="premium":
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    out=$(nix build --print-out-paths --no-link ".#{{ kind }}-{{ name }}-{{ channel }}")
+    if [[ "{{ kind }}" == "playground" ]]; then
+      slug=$(yq -r .name "$out/content/manifest.yaml")
+    else
+      slug=$(cat "$out/.content-name")
+    fi
+
+    startArgs=(-q)
+    if [[ "{{ tier }}" == "free" ]]; then
+      startArgs+=(--as-free-tier-user)
+    fi
+
+    src={{ kind }}s/{{ name }}
+
+    if [[ "{{ kind }}" == "playground" ]]; then
+      playId=$(labctl playground start "${startArgs[@]}" "$slug")
+      trap '[[ ${DEBUG:-} != true ]] && labctl playground destroy "$playId"' EXIT
+      cat "$src/tests.sh" | labctl ssh --machine ubuntu --user laborant "$playId"
+    else
+      labctl {{ kind }} stop "$slug" >/dev/null 2>&1 || true
+      labctl {{ kind }} start "${startArgs[@]}" --no-open --no-ssh "$slug"
+      playId=$(labctl playground list -q --filter {{ kind }}="$slug" | head -1)
+      trap '[[ ${DEBUG:-} != true ]] && labctl {{ kind }} stop "$slug"' EXIT
+      "$src/solution/run.sh" "$playId"
+      labctl playground tasks "$playId" --wait --fail-fast --timeout 120s
+    fi

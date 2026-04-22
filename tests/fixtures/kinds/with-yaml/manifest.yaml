@@ -1,0 +1,7 @@
+kind: tutorial
+title: With YAML
+channels:
+  dev:
+    name: with-yaml-dev
+  live:
+    name: with-yaml-live
