@@ -1,9 +1,10 @@
-# Shared test helpers. mockPkgs includes a real nixpkgs `lib` so helpers
+# Shared test helpers. mockPkgs reuses the caller-provided `pkgs` so helpers
 # that need string utilities (toUpper, etc.) work, but overrides the
 # derivation-producing attrs with mocks that capture their inputs so tests
 # can inspect them without realizing anything.
+{ pkgs }:
 let
-  realPkgs = import <nixpkgs> { };
+  realPkgs = pkgs;
   mockPkgs = realPkgs // {
     formats = realPkgs.formats // {
       yaml = _opts: {

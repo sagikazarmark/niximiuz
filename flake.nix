@@ -102,30 +102,7 @@
       checks = forAllSystems (
         { pkgs, ... }:
         {
-          tests =
-            pkgs.runCommand "niximiuz-tests"
-              {
-                nativeBuildInputs = [ pkgs.nix ];
-                NIX_PATH = "nixpkgs=${nixpkgs}";
-              }
-              ''
-                result=$(nix-instantiate --eval --strict \
-                  --option experimental-features "" \
-                  ${self}/tests/default.nix 2>&1) || {
-                  echo "$result" >&2
-                  exit 1
-                }
-                case "$result" in
-                  *"all tests passed"*)
-                    echo "$result"
-                    touch $out
-                    ;;
-                  *)
-                    echo "$result" >&2
-                    exit 1
-                    ;;
-                esac
-              '';
+          tests = pkgs.writeText "niximiuz-tests" (import ./tests/default.nix { inherit pkgs; });
 
           formatting = (treefmtFor pkgs).config.build.check self;
 

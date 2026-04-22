@@ -1,9 +1,10 @@
 # Unified test suite. Merges core + content subjects into one runTests pass.
 #
-# Run: nix eval --file ./nix/niximiuz/tests/default.nix
+# Run: nix eval --impure --expr 'import ./tests/default.nix { pkgs = import <nixpkgs> { }; }'
+{ pkgs }:
 let
-  lib = (import <nixpkgs> { }).lib;
-  helpers = import ./helpers.nix;
+  lib = pkgs.lib;
+  helpers = import ./helpers.nix { inherit pkgs; };
   inherit (helpers) core content mockPkgs;
 
   subjects = [
