@@ -20,6 +20,29 @@ let
     core = recordingCore;
   };
 
+  # Stub labx rendering to hand the source tree through unchanged. This
+  # lets us exercise orchestrating-mode README fallback behavior without
+  # realizing the actual labx derivation in unit tests.
+  contentOrchestrating =
+    let
+      real = import ../../lib/content {
+        pkgs = mockPkgs;
+        core = recordingCore;
+      };
+      stub = real // {
+        renderWithLabx = { source, ... }: source;
+      };
+      playgroundBuilder = import ../../lib/content/builders/playground.nix {
+        pkgs = mockPkgs;
+        core = recordingCore;
+        content = stub;
+      };
+    in
+    stub
+    // {
+      inherit (playgroundBuilder) mkPlayground;
+    };
+
   authored = {
     name = "";
     title = "Etcd";
@@ -70,6 +93,33 @@ let
       };
   };
   hookLive = hookBuilt.live._mockMkPlaygroundArgs.manifest.playground;
+
+  sourceFixture = ../fixtures/content/playgrounds/etcd;
+
+  orchestratedReadmeFallback = contentOrchestrating.mkPlayground {
+    name = "etcd";
+    source = sourceFixture;
+    loadManifest =
+      channel:
+      import (sourceFixture + "/manifest.nix") {
+        name = "etcd";
+        inherit channel;
+      };
+  };
+
+  orchestratedExplicitMarkdown = contentOrchestrating.mkPlayground {
+    name = "etcd";
+    source = sourceFixture;
+    loadManifest =
+      channel:
+      (import (sourceFixture + "/manifest.nix") {
+        name = "etcd";
+        inherit channel;
+      })
+      // {
+        markdown = "from manifest";
+      };
+  };
 in
 {
   # ---------- return shape ----------
@@ -162,6 +212,18 @@ in
   testMkPlaygroundCallerPostResolveComposesAfterLib = {
     expr = hookLive._sawAccessControl;
     expected = true;
+  };
+
+  # ---------- README fallback precedence ----------
+
+  testMkPlaygroundOrchestratingFallsBackToReadmeMarkdown = {
+    expr = orchestratedReadmeFallback.dev._mockMkPlaygroundArgs.manifest.markdown;
+    expected = builtins.readFile (sourceFixture + "/README.md");
+  };
+
+  testMkPlaygroundExplicitMarkdownBeatsReadmeFallback = {
+    expr = orchestratedExplicitMarkdown.dev._mockMkPlaygroundArgs.manifest.markdown;
+    expected = "from manifest";
   };
 
   # ---------- error cases ----------

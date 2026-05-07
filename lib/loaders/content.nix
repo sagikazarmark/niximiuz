@@ -18,14 +18,19 @@ let
     existingGlobals ++ perEntry;
 
   # mkManifestArgs: build the function that feeds arguments into every
-  # entry's `manifest.nix`. Returns a generic set (name, channel, pkgs);
-  # when a `bakeScope` is supplied, additionally injects the per-name
-  # bake-module targets and exposes `bakeScope` itself. Consumers layer
-  # additional fields via `extras name path channel`.
+  # entry's `manifest.nix`. Returns a generic set (name, channel, pkgs,
+  # lib); when a `bakeScope` is supplied, additionally injects the per-
+  # name bake-module targets and exposes `bakeScope` itself. Consumers
+  # layer additional fields via `extras name path channel`; `libFor`
+  # computes the helper namespace separately so helper injection doesn't
+  # need to piggyback on the generic extra-args channel.
   mkManifestArgs =
     {
       pkgs,
       bakeScope ? null,
+      libFor ?
+        _name: _path: _channel:
+        { },
       extras ?
         _name: _path: _channel:
         { },
@@ -33,6 +38,7 @@ let
     name: path: channel:
     {
       inherit name channel pkgs;
+      lib = libFor name path channel;
     }
     // (
       if bakeScope != null then
@@ -78,6 +84,9 @@ let
       manifestArgs,
       templateDirs,
       data,
+      extraRootFiles ?
+        _name: _path: _channel:
+        { },
     }:
     builtins.mapAttrs (
       _kind: flavorBuilder: baseDir:
@@ -92,6 +101,7 @@ let
             source = path;
             templateDirs = templateDirs path;
             data = data name path;
+            rootFilesFor = channel: extraRootFiles name path channel;
           };
       }
     ) perKind;

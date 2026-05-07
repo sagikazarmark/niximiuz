@@ -83,6 +83,23 @@ let
       };
     };
   };
+
+  vendor = content.mkVendor {
+    name = "int-content-vendor";
+    manifest = {
+      title = "Vendor";
+      channels = {
+        live = {
+          name = "vendor-live";
+          public = true;
+        };
+        dev = {
+          name = "vendor-dev";
+        };
+      };
+    };
+    body = "# Vendor";
+  };
 in
 pkgs.runCommand "niximiuz-integration-content"
   {
@@ -92,6 +109,8 @@ pkgs.runCommand "niximiuz-integration-content"
     tutDev = tutorial.dev;
     courseLive = course.live;
     courseDev = course.dev;
+    vendorLive = vendor.live;
+    vendorDev = vendor.dev;
     nativeBuildInputs = [ pkgs.gnugrep ];
   }
   ''
@@ -166,6 +185,16 @@ pkgs.runCommand "niximiuz-integration-content"
     grep -q 'ref: oci://x:live' \
       "$courseLive/content/01-module/01-lesson/00-index.md" \
       || fail "course live: __CHANNEL__ not substituted in nested lesson body"
+
+    # =====================================================================
+    # Vendor: channel split + content-name sidecar
+    # =====================================================================
+
+    [ -f "$vendorLive/content/index.md" ] || fail "vendor live: index.md missing"
+    grep -q '^vendor-live$' "$vendorLive/.content-name" \
+      || fail "vendor live: .content-name not lifted from channel config"
+    grep -q '^vendor-dev$' "$vendorDev/.content-name" \
+      || fail "vendor dev: .content-name not lifted from channel config"
 
     echo "content-integration: all assertions passed"
     touch $out

@@ -19,6 +19,26 @@
   pkgs,
 }:
 let
+  isPlainAttrs = v: builtins.isAttrs v && (v.type or null) != "derivation";
+
+  mergeRootFiles =
+    context: base: extra:
+    if extra == null || extra == { } then
+      base
+    else if base == null then
+      extra
+    else if isPlainAttrs base && isPlainAttrs extra then
+      base // extra
+    else
+      throw "${context}: generated rootFiles can only be merged with attrset rootFiles";
+
+  applyRootFiles =
+    context: args: extra:
+    let
+      merged = mergeRootFiles context (args.rootFiles or null) extra;
+    in
+    if merged == null then args else args // { rootFiles = merged; };
+
   # Default core-builder args for tutorial / training / course. Not used
   # by playground (no body) or challenge (adds solution).
   defaultBuilderArgs =
@@ -52,6 +72,8 @@ let
       source ? null,
       templateDirs ? [ ],
       data ? { },
+      rootFiles ? null,
+      rootFilesFor ? _channel: { },
       ...
     }@args:
     let
@@ -62,6 +84,7 @@ let
         "source"
         "templateDirs"
         "data"
+        "rootFilesFor"
       ];
 
       getManifest =
@@ -103,7 +126,7 @@ let
             else
               null;
 
-          finalArgs =
+          baseArgs =
             if source == null then
               # Static mode: forward caller args with postResolve-resolved manifest.
               restArgs
@@ -112,12 +135,16 @@ let
                 manifest = finalManifest;
               }
             else
-              # Orchestrating mode: hand off to caller's builderArgs.
-              builderArgs {
+              # Orchestrating mode: hand off to caller's builderArgs, then
+              # merge any caller-provided root sidecars that static mode would
+              # have forwarded directly.
+              applyRootFiles "content.mk${kind}.rootFiles" (builderArgs {
                 inherit name rendered;
                 resolved = finalManifest;
                 staticDir = autoStatic;
-              };
+              }) rootFiles;
+
+          finalArgs = applyRootFiles "content.mk${kind}.rootFilesFor" baseArgs (rootFilesFor channelName);
         in
         coreBuilder finalArgs;
     in

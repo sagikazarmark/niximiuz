@@ -20,6 +20,7 @@
       source ? null,
       templateDirs ? [ ],
       data ? { },
+      rootFilesFor ? _channel: { },
       ...
     }:
     let
@@ -29,6 +30,7 @@
         "source"
         "templateDirs"
         "data"
+        "rootFilesFor"
       ];
 
       getManifest =

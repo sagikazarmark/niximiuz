@@ -50,6 +50,12 @@ As a flake input:
           # Threaded into bake moduleArgs for every channel.
           kubeVersion = "v1.34.0";
         };
+        # Optional: extend the manifest-side `lib` namespace. niximiuz
+        # injects `lib.hashedCover` by default; add repo-specific helpers
+        # here instead of threading them through `extraManifestArgs`.
+        # extraManifestLibExtensions = _name: _path: _channel: final: prev: {
+        #   mkDefaultMachine = ...;
+        # };
         # Optional: per-entry data exposed to labx templates under
         # `.Extra.<key>`. Called with `{ bakeScope }` curried in so the
         # wiring can reach module passthru / sibling vars.nix. Compose
@@ -121,7 +127,8 @@ mkContentPipeline {
   # Escape hatches
   extraBakeModuleArgs     = _channel: {};
   extraBakeLibExtensions  = _channel: _final: _prev: {};
-  extraManifestArgs       = _name: _path: _channel: {};              # repo-specific manifest fields
+  extraManifestLibExtensions = _name: _path: _channel: _final: _prev: {}; # repo-specific manifest helpers under `lib`
+  extraManifestArgs       = _name: _path: _channel: {};                  # repo-specific manifest fields
 }
 ```
 
@@ -137,6 +144,8 @@ layers instead of using the preset.
   `${registry}/${path}:${channel}`. `lib.tagTarget channel "path" target`
   adds that as the companion moving tag alongside the content-addressed
   hash tag.
+- **Manifest lib**: every `manifest.nix` gets a `lib` attrset with
+  `lib.hashedCover`; repos extend it with `extraManifestLibExtensions`.
 - **vars.nix sidecar**: per-entry `vars.nix` overrides (for both bake
   modules and manifest `.Extra.bake.*` data) picked up automatically.
 
@@ -161,14 +170,12 @@ layers instead of using the preset.
 }
 ```
 
-Fields available (via `extraManifestArgs` your entrypoint supplies):
+Fields available in `manifest.nix`:
 - `name`, `channel`, `pkgs`, `bakeScope`, always provided by niximiuz.
+- `lib`, always provided by niximiuz. Built-ins currently include
+  `lib.hashedCover`; repos add helpers via `extraManifestLibExtensions`.
 - `images`, when a bake module matches this entry, this is its
   `targets` attrset. Authors reach content-addressed refs via
   `images.<target>.passthru.imageRef`.
-- anything you injected in `extraManifestArgs` (pinDigest, custom
-  lib helpers, personal defaults, ...).
-
-## License
-
-The project is licensed under the [MIT License](LICENSE).
+- anything you injected in `extraManifestArgs` (pinDigest, personal
+  defaults, ...).

@@ -60,7 +60,11 @@ in
           in
           {
             inherit name;
-            manifest = resolved // (if hasReadme then { markdown = builtins.readFile readmePath; } else { });
+            manifest =
+              resolved
+              // (
+                if resolved ? markdown || !hasReadme then { } else { markdown = builtins.readFile readmePath; }
+              );
             static = staticDir;
           };
       };

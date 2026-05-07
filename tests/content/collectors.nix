@@ -73,6 +73,19 @@ let
     inherit manifestArgs;
     templateDirs = _path: [ ];
     data = _name: _path: { };
+    extraRootFiles =
+      name: _path: channel:
+      if
+        builtins.elem name [
+          "etcd"
+          "lb"
+        ]
+      then
+        {
+          "docker-bake.json" = mockPkgs.writeText "docker-bake-${name}-${channel}.json" "{}";
+        }
+      else
+        { };
   };
 
   root = ../fixtures/content;
@@ -119,6 +132,11 @@ in
     expected = true;
   };
 
+  testMkPlaygroundsHasBakeRootFile = {
+    expr = playgrounds.etcd.dev._args.rootFiles ? "docker-bake.json";
+    expected = true;
+  };
+
   # ---------- mkTutorials ----------
 
   testMkTutorialsDiscoversEntries = {
@@ -151,6 +169,11 @@ in
 
   testMkTutorialsHasContentNameRootFile = {
     expr = tutorials.lb.dev._args.rootFiles ? ".content-name";
+    expected = true;
+  };
+
+  testMkTutorialsMergesBakeRootFile = {
+    expr = tutorials.lb.dev._args.rootFiles ? "docker-bake.json";
     expected = true;
   };
 

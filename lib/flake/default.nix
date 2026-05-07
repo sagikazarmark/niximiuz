@@ -44,6 +44,7 @@ let
     // flatten "challenge" (content.challenges or { })
     // flatten "training" (content.trainings or { })
     // flatten "course" (content.courses or { })
+    // flatten "vendor" (content.vendors or { })
     // wrapPaths (flatten "bake" (content.bakeFiles or { }));
 in
 {
