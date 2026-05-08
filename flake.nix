@@ -41,7 +41,7 @@
 
       # Strip the `content` attr from `./lib/core`'s output so the content
       # layer is fed just the pure-core surface, not the combined bundle.
-      pureCore = pkgs: builtins.removeAttrs (import ./lib/core { inherit pkgs; }) [ "content" ];
+      pureCore = pkgs: removeAttrs (import ./lib/core { inherit pkgs; }) [ "content" ];
     in
     {
       # Library surface, four independently importable layers grouped
