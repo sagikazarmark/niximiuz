@@ -30,6 +30,7 @@ let
   challenge = import ./builders/challenge.nix builderDeps;
   training = import ./builders/training.nix builderDeps;
   course = import ./builders/course.nix builderDeps;
+  vendor = import ./builders/vendor.nix builderDeps;
 
   content = import ../content { inherit pkgs core; };
 
@@ -44,6 +45,7 @@ let
     inherit (challenge) mkChallenge checkChallengeManifest;
     inherit (training) mkTraining checkTrainingManifest;
     inherit (course) mkCourse checkCourseManifest;
+    inherit (vendor) mkVendor checkVendorManifest;
 
     lib = {
       inherit (utils)

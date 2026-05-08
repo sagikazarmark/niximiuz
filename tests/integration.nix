@@ -79,6 +79,21 @@ let
       };
     };
   };
+
+  vendor = core.mkVendor {
+    name = "int-vendor";
+    manifest = {
+      title = "Vendor";
+    };
+    body = "# Vendor";
+    pages = {
+      "docs.md" = "# Docs";
+    };
+    static = ./fixtures/assets/complete/static;
+    rootFiles = {
+      ".content-name" = pkgs.writeText "content-name" "int-vendor";
+    };
+  };
 in
 pkgs.runCommand "niximiuz-integration"
   {
@@ -88,6 +103,7 @@ pkgs.runCommand "niximiuz-integration"
       challenge
       hashed
       course
+      vendor
       ;
     nativeBuildInputs = [ pkgs.gnugrep ];
   }
@@ -152,6 +168,12 @@ pkgs.runCommand "niximiuz-integration"
       || fail "course: lesson 00-index.md missing"
     [ -f "$course/content/01-module/01-lesson/01-overview.md" ] \
       || fail "course: lesson contentFile missing"
+
+    # --- vendor: flat multi-page tree ---------------------------------------
+    [ -f "$vendor/content/index.md" ] || fail "vendor: index.md missing"
+    [ -f "$vendor/content/docs.md" ] || fail "vendor: docs.md missing"
+    [ -f "$vendor/.content-name" ] || fail "vendor: .content-name root file missing"
+    [ -d "$vendor/content/__static__" ] || fail "vendor: __static__ missing"
 
     echo "integration: all assertions passed"
     touch $out

@@ -31,6 +31,7 @@ let
   challenge = import ./builders/challenge.nix builderDeps;
   training = import ./builders/training.nix builderDeps;
   course = import ./builders/course.nix builderDeps;
+  vendor = import ./builders/vendor.nix builderDeps;
 in
 content
 // {
@@ -42,4 +43,5 @@ content
   inherit (challenge) mkChallenge;
   inherit (training) mkTraining;
   inherit (course) mkCourse;
+  inherit (vendor) mkVendor;
 }

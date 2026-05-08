@@ -1,10 +1,9 @@
 # Unified test suite. Merges core + content subjects into one runTests pass.
 #
-# Run: nix eval --impure --expr 'import ./tests/default.nix { pkgs = import <nixpkgs> { }; }'
-{ pkgs }:
+# Run: nix eval --file ./nix/niximiuz/tests/default.nix
 let
-  lib = pkgs.lib;
-  helpers = import ./helpers.nix { inherit pkgs; };
+  lib = (import <nixpkgs> { }).lib;
+  helpers = import ./helpers.nix;
   inherit (helpers) core content mockPkgs;
 
   subjects = [
@@ -29,6 +28,7 @@ let
     (import ./content/training.nix { inherit content mockPkgs core; })
     (import ./content/course.nix { inherit content mockPkgs core; })
     (import ./content/collectors.nix { inherit content mockPkgs core; })
+    (import ./content/manifest-args.nix { inherit mockPkgs core; })
   ];
 
   allTests = builtins.foldl' (acc: s: acc // s) { } subjects;

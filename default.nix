@@ -30,12 +30,18 @@
       # Extra roots to scan for bake.nix modules beyond playgroundsDir.
       extraImageRoots ? [ ],
 
+      # Explicit bake.nix modules to include in the bake scope. Useful for
+      # consuming modules exposed by another flake without scanning its source
+      # tree or projecting unrelated modules into this content pipeline.
+      extraBakeModules ? { },
+
       # Path overrides (defaults mirror the iximiuz-repo layout)
       playgroundsDir ? root + "/playgrounds",
       tutorialsDir ? root + "/tutorials",
       challengesDir ? root + "/challenges",
       trainingsDir ? root + "/trainings",
       coursesDir ? root + "/courses",
+      vendorsDir ? root + "/vendors",
       templatesDir ? root + "/_templates",
 
       # Escape hatches
@@ -43,6 +49,14 @@
       extraBakeLibExtensions ?
         _channel: _final: _prev:
         { },
+      # Manifest-side helper namespace extensions. Manifests always get a
+      # `lib` attrset; this hook layers repo-specific helpers onto it using
+      # nixpkgs-overlay semantics (`final: prev: { ... }`).
+      extraManifestLibExtensions ?
+        _name: _path: _channel: _final: _prev:
+        { },
+      # Repo-specific manifest fields that are not helper functions. Use
+      # `extraManifestLibExtensions` for anything that belongs under `lib`.
       extraManifestArgs ?
         _name: _path: _channel:
         { },
@@ -63,7 +77,10 @@
       content = core.content;
 
       imageRoots = extraImageRoots ++ [ playgroundsDir ];
-      modules = builtins.foldl' (acc: dir: acc // loaders.bake.discoverBakeModules dir) { } imageRoots;
+      discoveredBakeModules = builtins.foldl' (
+        acc: dir: acc // loaders.bake.discoverBakeModules dir
+      ) { } imageRoots;
+      modules = extraBakeModules // discoveredBakeModules;
 
       moduleArgs =
         channel:
@@ -149,6 +166,21 @@
       # it.
       bakeScope = mkBakeScope "live";
 
+      # Manifest helper surface. Mirrors nix-docker-bake's split between
+      # plain args and a separately-extensible `lib` namespace so repos can
+      # add manifest helpers without routing them through `extraManifestArgs`.
+      manifestLibFor =
+        name: path: channel:
+        pkgs.lib.fix (
+          final:
+          let
+            prev = {
+              inherit (core) hashedCover;
+            };
+          in
+          prev // (extraManifestLibExtensions name path channel final prev)
+        );
+
       bakeFiles = loaders.bake.collectBakeFiles {
         inherit bake modules;
         channels = allChannels;
@@ -157,6 +189,7 @@
 
       manifestArgs = loaders.content.mkManifestArgs {
         inherit pkgs bakeScope;
+        libFor = manifestLibFor;
         extras = extraManifestArgs;
       };
 
@@ -175,6 +208,7 @@
           challenges = content.mkChallenge;
           trainings = content.mkTraining;
           courses = content.mkCourse;
+          vendors = content.mkVendor;
         };
         inherit
           core
@@ -182,6 +216,16 @@
           templateDirs
           ;
         data = dataFn;
+        extraRootFiles =
+          name: path: channel:
+          if
+            builtins.pathExists (path + "/bake.nix")
+            && builtins.hasAttr name bakeFiles
+            && builtins.hasAttr channel bakeFiles.${name}
+          then
+            { "docker-bake.json" = bakeFiles.${name}.${channel}; }
+          else
+            { };
       };
 
       playgrounds = collectors.playgrounds playgroundsDir;
@@ -189,8 +233,11 @@
       challenges = collectors.challenges challengesDir;
       trainings = collectors.trainings trainingsDir;
       courses = collectors.courses coursesDir;
+      vendors = collectors.vendors vendorsDir;
     in
     {
+      bakeModules = modules;
+
       inherit
         bakeScope
         bakeFiles
@@ -199,6 +246,7 @@
         challenges
         trainings
         courses
+        vendors
         ;
     };
 }
