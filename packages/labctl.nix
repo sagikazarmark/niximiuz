@@ -7,11 +7,12 @@ buildGoModule rec {
   src = fetchFromGitHub {
     owner = "iximiuz";
     repo = "labctl";
-    rev = "v${version}";
-    sha256 = "sha256-kE4nhksg7ArWtShay7xg4WHP9W+SVJqRvYZUrcaZ7CQ=";
+    # rev = "v${version}";
+    rev = "2498be2dad26aaa90faaeed1a8207de67f8d483e";
+    sha256 = "sha256-Bx8rGONk50sSqDU6Pd/hMOt3sH9NPs7RT4pXbCfS5dg=";
   };
 
-  vendorHash = "sha256-YZhKZ2O073+u1AMo8w+UNazfaOS6KgbMOAUceBgeALc=";
+  vendorHash = "sha256-E9H8J5KvtkWoPLswuoZ4CJHu3pw6d7Oyr4H25jRto6U=";
 
   subPackages = [ "." ];
 

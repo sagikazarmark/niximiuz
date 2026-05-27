@@ -91,6 +91,7 @@
       packages = forAllSystems (
         { pkgs, ... }:
         let
+          # TODO: user should be able to override this
           pkgs' = pkgs.extend self.overlays.default;
         in
         {
