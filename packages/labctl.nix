@@ -2,13 +2,12 @@
 
 buildGoModule rec {
   pname = "labctl";
-  version = "0.1.75";
+  version = "0.1.77";
 
   src = fetchFromGitHub {
     owner = "iximiuz";
     repo = "labctl";
-    # rev = "v${version}";
-    rev = "2498be2dad26aaa90faaeed1a8207de67f8d483e";
+    rev = "v${version}";
     sha256 = "sha256-Bx8rGONk50sSqDU6Pd/hMOt3sH9NPs7RT4pXbCfS5dg=";
   };
 
