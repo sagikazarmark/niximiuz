@@ -7,11 +7,11 @@ buildGoModule rec {
   src = fetchFromGitHub {
     owner = "sagikazarmark";
     repo = "labx";
-    rev = "06045ea2fc34f4b191ed066af75cc001a1e99fe0";
-    sha256 = "sha256-FxrJRG4+W19C7gbhNy/G4uLJY1dfGwEliaz0sb/R8OE=";
+    rev = "d49e5b1299af6cf9f22b5ad3766daf515ce01873";
+    sha256 = "sha256-FHzJGkU7jjWMxc34jtjcwhugIShwpoTWqU5W6f72hGA=";
   };
 
-  vendorHash = "sha256-qoEL7TAOcVmUU2tbakZ8BH6835InG5+mt9Bxqy14Jfg=";
+  vendorHash = "sha256-H6PjIgOCaQIVedlWyI78l00X94nDJZN61VxaGi0iQm8=";
 
   subPackages = [ "." ];
 
