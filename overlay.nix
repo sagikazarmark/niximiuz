@@ -1,6 +1,6 @@
 # Overlay adding the tools the content lib orchestrates:
-#   - labx (sagikazarmark/labx) requires go >= 1.25.6; nixpkgs 26.05 ships only
-#     1.25.4 as default, so we pin buildGo126Module.
+#   - labx (sagikazarmark/labx) requires go >= 1.27; pin buildGo127Module so it
+#     keeps building regardless of the default go in nixpkgs.
 #   - labctl (iximiuz/labctl) builds cleanly with the default go.
 #
 # Consumers apply this overlay at flake level; the content layer then
@@ -10,6 +10,6 @@
 final: _prev: {
   labctl = final.callPackage ./packages/labctl.nix { };
   labx = final.callPackage ./packages/labx.nix {
-    buildGoModule = final.buildGo126Module;
+    buildGoModule = final.buildGo127Module;
   };
 }
