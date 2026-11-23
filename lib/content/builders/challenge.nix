@@ -15,7 +15,7 @@ in
     builderArgs =
       args@{ rendered, ... }:
       let
-        solutionPath = "${rendered}/solution.md";
+        solutionPath = rendered + "/solution.md";
       in
       common.defaultBuilderArgs args
       // {

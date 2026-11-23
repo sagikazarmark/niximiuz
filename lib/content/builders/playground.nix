@@ -55,7 +55,7 @@ in
             staticDir,
           }:
           let
-            readmePath = "${rendered}/README.md";
+            readmePath = rendered + "/README.md";
             hasReadme = builtins.pathExists readmePath;
           in
           {

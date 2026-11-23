@@ -112,6 +112,10 @@
                 NIX_PATH = "nixpkgs=${nixpkgs}";
               }
               ''
+                # nix wants to create its state dirs (/nix/var/nix/profiles)
+                # on startup, which is not writable in the build sandbox.
+                export HOME=$TMPDIR
+                export NIX_STATE_DIR=$TMPDIR/nix/var/nix
                 result=$(nix-instantiate --eval --strict \
                   --option experimental-features "" \
                   ${self}/tests/default.nix 2>&1) || {

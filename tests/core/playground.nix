@@ -296,7 +296,7 @@ in
   testMkPlaygroundContentFilesListRejectsReserved = {
     expr =
       let
-        manifestYamlFile = builtins.toFile "manifest.yaml" "clobber: true";
+        manifestYamlFile = ../fixtures/kinds/with-yaml/manifest.yaml;
       in
       (builtins.tryEval
         (mkPlayground {

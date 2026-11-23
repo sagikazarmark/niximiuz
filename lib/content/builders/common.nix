@@ -51,7 +51,7 @@ let
     {
       inherit name;
       manifest = builtins.removeAttrs resolved [ "name" ];
-      body = builtins.readFile "${rendered}/index.md";
+      body = builtins.readFile (rendered + "/index.md");
       static = staticDir;
       rootFiles = {
         ".content-name" = pkgs.writeText "content-name" resolved.name;
